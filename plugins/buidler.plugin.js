@@ -1,11 +1,11 @@
-const API = require('./../lib/api');
-const utils = require('./resources/plugin.utils');
-const buidlerUtils = require('./resources/nomiclabs.utils');
-const PluginUI = require('./resources/nomiclabs.ui');
+const API = require("./../lib/api");
+const utils = require("./resources/plugin.utils");
+const buidlerUtils = require("./resources/nomiclabs.utils");
+const PluginUI = require("./resources/nomiclabs.ui");
 
-const pkg = require('./../package.json');
-const death = require('death');
-const path = require('path');
+const pkg = require("./../package.json");
+const death = require("death");
+const path = require("path");
 
 const { task, types } = require("@nomiclabs/buidler/config");
 const { ensurePluginLoadedWithUsePlugin } = require("@nomiclabs/buidler/plugins");
@@ -13,13 +13,12 @@ const { ensurePluginLoadedWithUsePlugin } = require("@nomiclabs/buidler/plugins"
 const {
   TASK_TEST,
   TASK_COMPILE,
-  TASK_COMPILE_GET_COMPILER_INPUT
+  TASK_COMPILE_GET_COMPILER_INPUT,
 } = require("@nomiclabs/buidler/builtin-tasks/task-names");
 
 ensurePluginLoadedWithUsePlugin();
 
 function plugin() {
-
   // UI for the task flags...
   const ui = new PluginUI();
 
@@ -28,15 +27,14 @@ function plugin() {
     const input = await runSuper();
     input.settings.metadata.useLiteralContent = false;
     return input;
-  })
+  });
 
   task("coverage", "Generates a code coverage report for tests")
-
-    .addOptionalParam("testfiles",  ui.flags.file,       "", types.string)
+    .addOptionalParam("testfiles", ui.flags.file, "", types.string)
     .addOptionalParam("solcoverjs", ui.flags.solcoverjs, "", types.string)
-    .addOptionalParam('temp',       ui.flags.temp,       "", types.string)
+    .addOptionalParam("temp", ui.flags.temp, "", types.string)
 
-    .setAction(async function(args, env){
+    .setAction(async function (args, env) {
       let error;
       let ui;
       let api;
@@ -54,25 +52,19 @@ function plugin() {
         // ==============
         const network = buidlerUtils.setupBuidlerNetwork(env, api, ui);
 
-        const client = api.client || require('ganache-cli');
+        const client = api.client || require("ganache-cli");
         const address = await api.ganache(client);
         const accountsRequest = await utils.getAccountsGanache(api.server.provider);
         const nodeInfoRequest = await utils.getNodeInfoGanache(api.server.provider);
-        const ganacheVersion = nodeInfoRequest.result.split('/')[1];
+        const ganacheVersion = nodeInfoRequest.result.split("/")[1];
 
         // Set default account
         network.from = accountsRequest.result[0];
 
         // Version Info
-        ui.report('versions', [
-          ganacheVersion,
-          pkg.version
-        ]);
+        ui.report("versions", [ganacheVersion, pkg.version]);
 
-        ui.report('ganache-network', [
-          env.network.name,
-          api.port
-        ]);
+        ui.report("ganache-network", [env.network.name, api.port]);
 
         // Run post-launch server hook;
         await api.onServerReady(config);
@@ -83,10 +75,7 @@ function plugin() {
 
         const skipFiles = api.skipFiles || [];
 
-        let {
-          targets,
-          skipped
-        } = utils.assembleFiles(config, skipFiles);
+        let { targets, skipped } = utils.assembleFiles(config, skipFiles);
 
         targets = api.instrument(targets);
         utils.reportSkipped(config, skipped);
@@ -96,19 +85,16 @@ function plugin() {
         // ==============
         config.temp = args.temp;
 
-        const {
-          tempArtifactsDir,
-          tempContractsDir
-        } = utils.getTempLocations(config);
+        const { tempArtifactsDir, tempContractsDir } = utils.getTempLocations(config);
 
-        utils.setupTempFolders(config, tempContractsDir, tempArtifactsDir)
+        utils.setupTempFolders(config, tempContractsDir, tempArtifactsDir);
         utils.save(targets, config.paths.sources, tempContractsDir);
         utils.save(skipped, config.paths.sources, tempContractsDir);
 
         config.paths.sources = tempContractsDir;
         config.paths.artifacts = tempArtifactsDir;
         config.paths.cache = buidlerUtils.tempCacheDir(config);
-        config.solc.optimizer.enabled = false;
+        config.solc.optimizer.enabled = true;
 
         await env.run(TASK_COMPILE);
 
@@ -117,12 +103,10 @@ function plugin() {
         // ======
         // Tests
         // ======
-        const testfiles = args.testfiles
-          ? buidlerUtils.getTestFilePaths(args.testfiles)
-          : [];
+        const testfiles = args.testfiles ? buidlerUtils.getTestFilePaths(args.testfiles) : [];
 
         try {
-          await env.run(TASK_TEST, {testFiles: testfiles})
+          await env.run(TASK_TEST, { testFiles: testfiles });
         } catch (e) {
           error = e;
         }
@@ -133,16 +117,15 @@ function plugin() {
         // ========
         await api.report();
         await api.onIstanbulComplete(config);
+      } catch (e) {
+        error = e;
+      }
 
-    } catch(e) {
-       error = e;
-    }
+      await buidlerUtils.finish(config, api);
 
-    await buidlerUtils.finish(config, api);
-
-    if (error !== undefined ) throw error;
-    if (process.exitCode > 0) throw new Error(ui.generate('tests-fail', [process.exitCode]));
-  })
+      if (error !== undefined) throw error;
+      if (process.exitCode > 0) throw new Error(ui.generate("tests-fail", [process.exitCode]));
+    });
 }
 
 module.exports = plugin;
