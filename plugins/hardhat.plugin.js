@@ -58,7 +58,7 @@ task(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOB_FOR_FILE).setAction(async (_, __,
     settings.metadata.useLiteralContent = false;
     // Override optimizer settings for all compilers
     settings.optimizer.enabled = true;
-    settings.optimizer.runs = 1;
+    settings.optimizer.runs = 200;
   }
   return compilationJob;
 });
